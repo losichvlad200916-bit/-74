@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>АК-74: 3D-разборка и ТТХ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#161c18">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="АК-74">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&family=PT+Serif:wght@400;700&display=swap">
+<style>
+:root{--paper:#dfe3da;--panel:#eceee7;--ink:#1d2822;--muted:#56635a;--line:#aab3a8;--accent:#c4401f;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#161c18;--panel:#1f2722;--ink:#e4e8e0;--muted:#98a59c;--line:#3a463e;--accent:#ee6a45}}
+:root[data-theme="dark"]{--paper:#161c18;--panel:#1f2722;--ink:#e4e8e0;--muted:#98a59c;--line:#3a463e;--accent:#ee6a45}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 "PT Serif",Georgia,serif}
+header{padding:2rem clamp(1rem,4vw,3rem) 1rem}
+h1{font:700 clamp(2rem,6vw,3.6rem)/1 "PT Sans Narrow","Arial Narrow",sans-serif;margin:0 0 .5rem}
+header p{margin:0;max-width:62ch;color:var(--muted)}
+main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:1.5rem;padding:1rem clamp(1rem,4vw,3rem) 1rem}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.stage{position:relative;background:var(--panel);border:1px solid var(--line);height:clamp(320px,52vw,560px);overflow:hidden}
+#c{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.tools{position:absolute;left:.6rem;bottom:.6rem;display:flex;gap:.4rem}
+.tools button{padding:.35rem .7rem;font-size:.95rem;background:var(--panel)}
+.hint{position:absolute;right:.7rem;top:.5rem;font-size:.8rem;color:var(--muted)}
+.side{display:flex;flex-direction:column;gap:1rem}
+.card{background:var(--panel);border:1px solid var(--line);padding:1.1rem 1.2rem}
+.card h2{font:700 1.7rem/1.1 "PT Sans Narrow",sans-serif;margin:0 0 .5rem}
+.counter{font:400 1rem "PT Sans Narrow",sans-serif;color:var(--muted);margin-bottom:.3rem}
+.warn{border-left:4px solid var(--accent);padding:.5rem .8rem;background:color-mix(in srgb,var(--accent) 10%,transparent);margin:.8rem 0 0;font-size:.95rem}
+.nav{display:flex;gap:.6rem}
+button{font:700 1.05rem "PT Sans Narrow",sans-serif;padding:.7rem 1.1rem;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.nav button{flex:1}
+button.primary{background:var(--ink);color:var(--paper)}
+button:disabled{opacity:.35;cursor:default}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+ol{list-style:none;margin:0;padding:0;counter-reset:s}
+ol li{counter-increment:s}
+ol li button{all:unset;display:flex;gap:.7rem;width:100%;padding:.35rem .2rem;cursor:pointer;font-size:.95rem;border-bottom:1px solid var(--line);color:var(--muted)}
+ol li button::before{content:counter(s);font:700 1rem "PT Sans Narrow",sans-serif;min-width:1.4rem}
+ol li button[aria-current="step"]{color:var(--ink);font-weight:700}
+ol li button[aria-current="step"]::before{color:var(--accent)}
+ol li button:focus-visible{outline:3px solid var(--accent)}
+section.ttx{padding:1rem clamp(1rem,4vw,3rem) 2rem}
+section.ttx h2{font:700 2rem/1.1 "PT Sans Narrow",sans-serif;margin:0 0 .8rem}
+.tw{overflow-x:auto;background:var(--panel);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:420px}
+th,td{text-align:left;padding:.55rem 1rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:400;color:var(--muted);width:48%}
+td{font-weight:700}
+footer{padding:0 clamp(1rem,4vw,3rem) 2rem;color:var(--muted);font-size:.85rem;max-width:80ch}
+</style>
+</head>
+<body>
+<header>
+  <h1>АК-74: 3D-разборка и ТТХ</h1>
+  <p>Вращайте модель мышью или пальцем, колесом и щипком меняйте масштаб. Модель упрощённая: она показывает порядок неполной разборки, а не точную геометрию деталей.</p>
+</header>
+<main>
+  <div class="stage">
+    <canvas id="c" aria-label="3D-модель автомата"></canvas>
+    <div class="hint">Вращение: перетаскивание</div>
+    <div class="tools">
+      <button id="side">Вид сбоку</button>
+      <button id="spin" aria-pressed="false">Автоповорот</button>
+      <button id="install" hidden>Установить</button>
+    </div>
+  </div>
+  <div class="side">
+    <div class="card" aria-live="polite">
+      <div class="counter" id="counter"></div>
+      <h2 id="title"></h2>
+      <p id="text" style="margin:0"></p>
+      <div class="warn" id="warn" hidden></div>
+    </div>
+    <div class="nav"><button id="prev">Назад</button><button id="next" class="primary">Дальше</button></div>
+    <div class="card"><ol id="list"></ol></div>
+  </div>
+</main>
+<section class="ttx">
+  <h2>Тактико-технические характеристики</h2>
+  <div class="tw"><table>
+    <tr><th>Калибр</th><td>5,45×39 мм</td></tr>
+    <tr><th>Принцип работы</th><td>Отвод пороховых газов, запирание поворотом затвора</td></tr>
+    <tr><th>Длина</th><td>943 мм</td></tr>
+    <tr><th>Длина ствола</th><td>415 мм</td></tr>
+    <tr><th>Масса без магазина</th><td>около 3,3 кг</td></tr>
+    <tr><th>Ёмкость магазина</th><td>30 патронов</td></tr>
+    <tr><th>Начальная скорость пули</th><td>около 900 м/с</td></tr>
+    <tr><th>Темп стрельбы</th><td>около 600 выстр./мин</td></tr>
+    <tr><th>Боевая скорострельность</th><td>около 100 выстр./мин очередями, около 40 одиночными</td></tr>
+    <tr><th>Прицельная дальность</th><td>1000 м</td></tr>
+    <tr><th>Режимы огня</th><td>Одиночный и автоматический</td></tr>
+    <tr><th>Принят на вооружение</th><td>1974 год, СССР</td></tr>
+  </table></div>
+</section>
+<footer>Данные приведены по открытым источникам и могут отличаться в зависимости от модификации и партии. Перед любыми действиями с оружием убедитесь, что оно разряжено.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+var canvas=document.getElementById('c'), stage=canvas.parentNode;
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+var scene=new THREE.Scene();
+var camera=new THREE.PerspectiveCamera(35,1,0.1,100);
+camera.position.set(2,3.5,11);
+var controls=new THREE.OrbitControls(camera,canvas);
+controls.target.set(0,0.3,0); controls.enableDamping=true; controls.minDistance=4; controls.maxDistance=20;
+scene.add(new THREE.HemisphereLight(0xffffff,0x556058,0.9));
+var dl=new THREE.DirectionalLight(0xffffff,0.9); dl.position.set(4,8,6); scene.add(dl);
+var dl2=new THREE.DirectionalLight(0xffffff,0.35); dl2.position.set(-5,2,-6); scene.add(dl2);
+
+var STEEL=0x4a5650, DARK=0x2b3330, WOOD=0x9a5f2e, PLUM=0x7a2f1d;
+/* рендер: тени, тональная компрессия, окружение */
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15; renderer.outputEncoding=THREE.sRGBEncoding;
+scene.children[0].intensity=0.35;
+dl.castShadow=true; dl.position.set(4,10,6); dl.shadow.mapSize.set(2048,2048); dl.shadow.bias=-0.0006; dl.shadow.radius=4;
+['left','bottom'].forEach(function(k){dl.shadow.camera[k]=-9});['right','top'].forEach(function(k){dl.shadow.camera[k]=9});
+dl.shadow.camera.near=1; dl.shadow.camera.far=40;
+var floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:0.28}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-4; floor.receiveShadow=true; scene.add(floor);
+function mkC(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function tex(c){var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t}
+/* окружение для отражений */
+var ec=mkC(1024,512),ex=ec.getContext('2d'),eg=ex.createLinearGradient(0,0,0,512);
+eg.addColorStop(0,'#e4ecf5');eg.addColorStop(.5,'#9aa6ad');eg.addColorStop(.52,'#3a413d');eg.addColorStop(1,'#1c211e');
+ex.fillStyle=eg;ex.fillRect(0,0,1024,512);ex.fillStyle='#ffffff';ex.fillRect(150,70,220,70);ex.fillRect(650,90,180,55);ex.fillStyle='#fff3dc';ex.fillRect(420,40,90,40);
+var envTex=new THREE.CanvasTexture(ec);envTex.mapping=THREE.EquirectangularReflectionMapping;envTex.encoding=THREE.sRGBEncoding;
+scene.environment=new THREE.PMREMGenerator(renderer).fromEquirectangular(envTex).texture;
+/* текстура дерева */
+var wc=mkC(512,512),wx=wc.getContext('2d');wx.fillStyle='#b4713a';wx.fillRect(0,0,512,512);
+for(var wi=0;wi<320;wi++){var wy=Math.random()*512,wl=60+Math.random()*420,wxs=Math.random()*512,dk=Math.random()<.7;
+ wx.strokeStyle=dk?'rgba('+(60+Math.random()*50|0)+','+(25+Math.random()*25|0)+',8,'+(0.06+Math.random()*.18)+')':'rgba(230,170,100,'+(0.05+Math.random()*.1)+')';
+ wx.lineWidth=.6+Math.random()*2.6;wx.beginPath();wx.moveTo(wxs,wy);wx.bezierCurveTo(wxs+wl/3,wy+(Math.random()-.5)*7,wxs+2*wl/3,wy+(Math.random()-.5)*7,wxs+wl,wy+(Math.random()-.5)*4);wx.stroke()}
+var wood=tex(wc);wood.repeat.set(0.5,0.5);
+var woodR=wood.clone();woodR.needsUpdate=true;woodR.center.set(.5,.5);woodR.rotation=Math.PI/2;
+/* шлифованный металл и пластик */
+var bc=mkC(256,256),bx=bc.getContext('2d');bx.fillStyle='#808080';bx.fillRect(0,0,256,256);
+for(var bi=0;bi<600;bi++){var bg=90+Math.random()*110|0,by=Math.random()*256,bxx=Math.random()*256;bx.strokeStyle='rgba('+bg+','+bg+','+bg+',.35)';bx.lineWidth=.5;bx.beginPath();bx.moveTo(bxx,by);bx.lineTo(bxx+20+Math.random()*120,by);bx.stroke()}
+var brushed=tex(bc);
+var nc=mkC(128,128),nx=nc.getContext('2d'),nd=nx.createImageData(128,128);
+for(var ni=0;ni<nd.data.length;ni+=4){var nv=110+Math.random()*60|0;nd.data[ni]=nd.data[ni+1]=nd.data[ni+2]=nv;nd.data[ni+3]=255}
+nx.putImageData(nd,0,0);var noise=tex(nc);noise.repeat.set(3,3);
+function M(c){
+ var o={color:c,roughness:.45,metalness:.75,envMapIntensity:1.3,bumpMap:brushed,bumpScale:.15};
+ if(c===WOOD){o.color=0xffffff;o.map=wood;o.bumpMap=wood;o.bumpScale=.5;o.roughness=.5;o.metalness=0;o.envMapIntensity=.6}
+ else if(c===PLUM||c===0x5a2013){o.roughness=.32;o.metalness=0;o.bumpMap=noise;o.bumpScale=.35;o.envMapIntensity=.8}
+ else if(c===GRIP){o.roughness=.4;o.metalness=0;o.bumpMap=noise;o.bumpScale=.9;o.envMapIntensity=.6}
+ return new THREE.MeshStandardMaterial(o)}
+function box(g,w,h,d,c,x,y,z,rz){var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c));m.position.set(x,y,z||0);if(rz)m.rotation.z=rz;g.add(m);return m}
+function cyl(g,r,l,c,x,y,z){var m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,l,20),M(c));m.rotation.z=Math.PI/2;m.position.set(x,y,z||0);g.add(m);return m}
+function grp(){var g=new THREE.Group();scene.add(g);return g}
+
+/* вспомогательные */
+function ext(g,pts,d,c,x,y,z){var s=new THREE.Shape();pts.forEach(function(p,i){i?s.lineTo(p[0],p[1]):s.moveTo(p[0],p[1])});var geo=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:true,bevelThickness:.015,bevelSize:.015,bevelSegments:1});geo.translate(0,0,-d/2);var m=new THREE.Mesh(geo,M(c));m.position.set(x||0,y||0,z||0);g.add(m);return m}
+function cylz(g,r,l,c,x,y,z){var m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,l,16),M(c));m.rotation.x=Math.PI/2;m.position.set(x,y,z||0);g.add(m);return m}
+var LIGHT=0x7a8680, BLACK=0x15191a, GRIP=0x3a2418;
+
+/* неподвижные части */
+var base=grp();
+box(base,2.4,0.4,0.42,STEEL,-0.5,-0.05,0);                 // ствольная коробка
+box(base,0.35,0.46,0.44,DARK,0.55,-0.02,0);                // колодка ствола
+box(base,0.9,0.14,0.02,BLACK,-0.2,0.06,0.215);             // окно для гильз
+box(base,1.1,0.05,0.025,LIGHT,-0.75,-0.12,0.225);          // переводчик
+box(base,0.12,0.14,0.04,LIGHT,-1.25,-0.1,0.235);
+ext(base,[[-1.7,0.2],[-4.05,0.24],[-4.1,-0.62],[-3.95,-0.62],[-1.9,-0.3],[-1.7,-0.25]],0.34,WOOD,0,0,0); // приклад
+box(base,0.06,0.86,0.38,DARK,-4.14,-0.2,0);                // затылок
+ext(base,[[-0.85,-0.2],[-0.45,-0.2],[-0.68,-1.1],[-1.05,-1.1]],0.3,GRIP,0,0,0); // рукоятка
+var tg=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.025,8,20,Math.PI),M(DARK));tg.rotation.z=Math.PI;tg.position.set(-0.2,-0.24,0);base.add(tg); // скоба
+box(base,0.04,0.2,0.05,LIGHT,-0.25,-0.3,0,0.2);            // спусковой крючок
+cyl(base,0.075,4.0,STEEL,2.7,0.1,0);                       // ствол
+cyl(base,0.13,0.55,DARK,4.4,0.1,0);                        // дульный тормоз
+cyl(base,0.145,0.04,DARK,4.18,0.1,0);
+box(base,0.08,0.34,0.1,BLACK,4.33,0.1,0); box(base,0.08,0.34,0.1,BLACK,4.5,0.1,0); // щели
+box(base,0.3,0.25,0.18,DARK,2.85,0.2,0);                   // газовая камера
+box(base,0.22,0.16,0.2,DARK,3.9,0.2,0);                    // основание мушки
+box(base,0.04,0.22,0.05,DARK,3.9,0.37,0);                  // мушка
+box(base,0.45,0.08,0.34,DARK,0.95,0.2,0);                  // колодка прицела
+box(base,0.5,0.02,0.2,LIGHT,1.0,0.27,0,-0.12);             // прицельная планка
+box(base,1.7,0.3,0.34,WOOD,1.6,-0.1,0);                    // нижняя накладка
+for(var j=0;j<5;j++)box(base,0.04,0.2,0.36,BLACK,1.0+j*0.3,-0.1,0); // рёбра накладки
+
+/* отделяемые части */
+var P={};
+function part(id,off){var g=grp();P[id]={g:g,off:new THREE.Vector3(off[0],off[1],off[2]),meshes:[]};return g}
+function reg(id){P[id].g.traverse(function(o){if(o.isMesh)P[id].meshes.push(o)})}
+var g=part('mag',[0.7,-1.4,0]);
+var fr=[],bk=[];
+for(j=0;j<=12;j++){var t=j/12,cx=0.3+0.8*t*t,yy=-0.2-2.2*t;fr.push([cx+0.24,yy]);bk.push([cx-0.24,yy])}
+ext(g,fr.concat(bk.reverse()),0.28,PLUM,0,0,0);
+for(j=0;j<5;j++){var t2=0.15+0.17*j;box(g,0.5,0.03,0.33,0x5a2013,0.3+0.8*t2*t2,-0.2-2.2*t2,0,Math.atan(0.727*t2))}
+box(g,0.56,0.07,0.34,DARK,1.1,-2.42,0,0.63);
+reg('mag');
+
+g=part('ramrod',[0,-1.1,1.1]); cyl(g,0.025,3.4,0x9aa49e,2.4,-0.33,0); cyl(g,0.05,0.1,DARK,0.72,-0.33,0); reg('ramrod');
+g=part('case',[-1.2,-0.9,1.1]); box(g,0.5,0.22,0.37,DARK,-3.7,0.0,0); box(g,0.3,0.04,0.38,BLACK,-3.7,0.0,0); reg('case');
+g=part('cover',[0,1.7,0]); box(g,2.4,0.2,0.44,STEEL,-0.5,0.27,0); var dome=cyl(g,0.21,2.4,STEEL,-0.5,0.36,0); dome.scale.x=0.55; reg('cover');
+
+g=part('spring',[-1.3,1.2,0.4]);
+var hp=[];for(var a=0;a<=88;a+=0.35)hp.push(new THREE.Vector3(-1.1+a/88*1.1,0.22+Math.cos(a)*0.05,Math.sin(a)*0.05));
+g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hp),400,0.009,5),M(0xb7c0ba)));
+cyl(g,0.02,1.35,LIGHT,-0.5,0.22,0); box(g,0.08,0.14,0.14,DARK,0.12,0.22,0); box(g,0.06,0.12,0.12,DARK,-1.15,0.22,0);
+reg('spring');
+
+g=part('carrier',[0.3,1.8,0.7]);
+box(g,1.7,0.16,0.3,STEEL,-0.3,0.1,0);
+box(g,0.2,0.22,0.12,STEEL,0.4,0.2,0);
+cyl(g,0.045,1.6,LIGHT,1.15,0.3,0);                         // газовый поршень
+box(g,0.12,0.1,0.14,DARK,-0.1,0.15,0.2); cylz(g,0.05,0.1,DARK,-0.1,0.15,0.3); // рукоятка
+var bolt=new THREE.Group(); g.add(bolt);
+cyl(bolt,0.085,0.6,LIGHT,0.2,0.1,0); box(bolt,0.12,0.18,0.07,LIGHT,0.5,0.1,0.1); box(bolt,0.12,0.18,0.07,LIGHT,0.5,0.1,-0.1); cyl(bolt,0.03,0.1,BLACK,0.52,0.1,0);
+reg('carrier');
+P.bolt={g:bolt,off:new THREE.Vector3(1.8,0.3,0.7),meshes:[]};
+bolt.traverse(function(o){if(o.isMesh)P.bolt.meshes.push(o)});
+P.carrier.meshes=P.carrier.meshes.filter(function(m){return P.bolt.meshes.indexOf(m)<0});
+
+g=part('gas',[1.3,1.3,-1.0]);
+cyl(g,0.06,1.9,0x8b968f,1.9,0.36,0); var uh=cyl(g,0.15,1.7,WOOD,1.9,0.2,0); uh.material.map=woodR; uh.material.bumpMap=woodR; box(g,0.1,0.1,0.1,DARK,1.0,0.4,0);
+reg('gas');
+
+/* шаги */
+var OFFS=['mag','ramrod','case','cover','spring','carrier','bolt','gas'];
+var STEPS=[
+ {t:"Исходное положение",p:null,x:"Автомат собран. Нажимайте «Дальше» и вращайте модель, чтобы рассмотреть каждую деталь.",w:"Поставьте переводчик на предохранитель."},
+ {t:"Отделите магазин",p:"mag",x:"Удерживая магазин правой рукой, большим пальцем нажмите на защёлку, наклоните нижнюю часть магазина вперёд и отделите его."},
+ {t:"Проверьте патронник",p:null,x:"Переведите переводчик вниз, оттяните рукоятку затворной рамы назад, осмотрите патронник, отпустите рукоятку и спустите курок.",w:"Убедитесь, что в патроннике нет патрона."},
+ {t:"Достаньте шомпол",p:"ramrod",x:"Оттяните конец шомпола от ствола и извлеките его вниз из-под ствола."},
+ {t:"Достаньте пенал с принадлежностью",p:"case",x:"Утопите пальцем крышку гнезда в прикладе. Пенал выйдет из гнезда под действием пружины."},
+ {t:"Снимите крышку ствольной коробки",p:"cover",x:"Левой рукой возьмите автомат за шейку приклада, правой нажмите на выступ направляющего стержня возвратного механизма и приподнимите заднюю часть крышки. Затем снимите крышку."},
+ {t:"Отделите возвратный механизм",p:"spring",x:"Подайте направляющий стержень вперёд до выхода его пятки из продольного паза ствольной коробки, приподнимите вверх и извлеките механизм назад."},
+ {t:"Отделите затворную раму с затвором",p:"carrier",x:"Продвиньте затворную раму вперёд и немного назад, приподнимите её вместе с затвором и отделите от ствольной коробки."},
+ {t:"Отделите затвор от рамы",p:"bolt",x:"Отведите затвор назад, поверните его так, чтобы ведущий выступ вышел из фигурного выреза рамы, и выведите вперёд."},
+ {t:"Отделите газовую трубку со ствольной накладкой",p:"gas",x:"Сдвиньте замыкатель газовой трубки вверх и снимите трубку вместе с накладкой.",w:"На этом неполная разборка заканчивается. Сборка выполняется в обратном порядке."}
+];
+var cur=0, removed={}, list=document.getElementById('list');
+STEPS.forEach(function(s,n){var li=document.createElement('li'),b=document.createElement('button');b.textContent=s.t;b.onclick=function(){go(n)};li.appendChild(b);list.appendChild(li)});
+function go(n){
+  cur=Math.max(0,Math.min(STEPS.length-1,n)); removed={};
+  for(var k=1;k<=cur;k++)if(STEPS[k].p)removed[STEPS[k].p]=true;
+  OFFS.forEach(function(id){var on=STEPS[cur].p===id;P[id].meshes.forEach(function(m){m.material.emissive.setHex(on?0x9a2f14:0x000000)})});
+  document.getElementById('counter').textContent='Шаг '+(cur+1)+' из '+STEPS.length;
+  document.getElementById('title').textContent=STEPS[cur].t;
+  document.getElementById('text').textContent=STEPS[cur].x;
+  var w=document.getElementById('warn');w.hidden=!STEPS[cur].w;w.textContent=STEPS[cur].w||'';
+  document.getElementById('prev').disabled=cur===0;
+  document.getElementById('next').disabled=cur===STEPS.length-1;
+  Array.prototype.forEach.call(list.querySelectorAll('button'),function(b,k){k===cur?b.setAttribute('aria-current','step'):b.removeAttribute('aria-current')});
+}
+document.getElementById('prev').onclick=function(){go(cur-1)};
+document.getElementById('next').onclick=function(){go(cur+1)};
+document.getElementById('side').onclick=function(){camera.position.set(0,0.6,12.5);controls.target.set(0,0.3,0)};
+var spinBtn=document.getElementById('spin');
+spinBtn.onclick=function(){controls.autoRotate=!controls.autoRotate;controls.autoRotateSpeed=1.5;spinBtn.setAttribute('aria-pressed',controls.autoRotate)};
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1)});
+
+function resize(){var w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage); resize();
+scene.traverse(function(o){if(o.isMesh&&o!==floor){o.castShadow=true;o.receiveShadow=true}});
+var zero=new THREE.Vector3();
+(function loop(){
+  requestAnimationFrame(loop);
+  OFFS.forEach(function(id){var p=P[id],t=removed[id]?p.off:zero;if(reduce)p.g.position.copy(t);else p.g.position.lerp(t,0.09)});
+  controls.update(); renderer.render(scene,camera);
+})();
+go(0);
+</script>
+<script>
+if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+var deferred=null,ib=document.getElementById('install');
+addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferred=e;ib.hidden=false});
+ib.onclick=function(){if(deferred){deferred.prompt();deferred=null;ib.hidden=true}};
+addEventListener('appinstalled',function(){ib.hidden=true});
+</script>
+</body>
+</html>
